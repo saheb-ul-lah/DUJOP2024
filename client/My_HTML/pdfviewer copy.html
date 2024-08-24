@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Viewer</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        .sidebar {
+            width: 30%;
+            background-color: #343a40;
+            color: #fff;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            position: fixed;
+            top: 60px;
+            bottom: 0;
+            transition: transform 0.3s ease;
+        }
+        .sidebar h2 {
+            cursor: pointer;
+            padding: 10px;
+            border-bottom: 1px solid #495057;
+            margin: 10px 0;
+            transition: background-color 0.3s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sidebar h2:hover {
+            background-color: #0056b3;
+        }
+
+        .sidebar h2.active {
+            background-color: #495057;
+        }
+        .toggle-btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 10;
+            transition: transform 0.3s ease, background-color 0.3s;
+            border-radius: 5px;
+        }
+        .toggle-btn:hover {
+            background-color: #0056b3;
+        }
+        .content {
+            width: 70%;
+            margin-left: 30%;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            height: calc(100vh - 60px);
+            margin-top: 60px;
+            transition: margin-left 0.3s ease;
+        }
+        .pdf-viewer {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 10;
+        }
+        .controls button {
+            padding: 10px;
+            cursor: pointer;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            transition: background-color 0.3s, transform 0.3s;
+            border-radius: 5px;
+        }
+        .controls button:hover {
+            background-color: #0056b3;
+            transform: scale(1.05);
+        }
+        canvas {
+            border: 1px solid #ccc;
+            margin-bottom: 20px;
+            width: auto;
+        }
+        .profile-info {
+            display: flex;
+            align-items: center;
+            margin-top: 5px;
+        }
+        .profile-info img {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        .download-icon {
+            margin-left: auto;
+            cursor: pointer;
+            color: #fff;
+            padding: 2px 10px;
+            border-radius: 50%;
+            border: 2px solid white;
+            transition: all 0.5s;
+        }
+        .download-icon:hover {
+            background-color: blueviolet;
+        }
+    </style>
+</head>
+<body>
+    <button class="toggle-btn" id="toggle-btn">Toggle Sidebar</button>
+    <div class="sidebar" id="sidebar">
+        <h2 class="active" data-pages="1-2">
+            Section 1
+            <span class="download-icon" data-pages="1-2">⬇</span>
+        </h2>
+        <div class="profile-info">
+            <img src="../assets/img/testimonials/testimonials-3.jpg" alt="Profile Picture">
+            John Doe (2 pages)
+        </div>
+        <h2 data-pages="3-5">
+            Section 2
+            <span class="download-icon" data-pages="3-5">⬇</span>
+        </h2>
+        <div class="profile-info">
+            <img src="../assets/img/testimonials/testimonials-3.jpg" alt="Profile Picture">
+            Jane Smith (3 pages)
+        </div>
+        <h2 data-pages="6-6">
+            Section 3
+            <span class="download-icon" data-pages="6-6">⬇</span>
+        </h2>
+        <div class="profile-info">
+            <img src="../assets/img/testimonials/testimonials-3.jpg" alt="Profile Picture">
+            Michael Johnson (1 page)
+        </div>
+    </div>
+    <div class="content" id="content">
+        <div class="controls">
+            <button id="download-all">Download All</button>
+            <button id="zoom-in">Zoom In</button>
+            <button id="zoom-out">Zoom Out</button>
+            <button id="rotate">Rotate</button>
+        </div>
+        <div class="pdf-viewer" id="pdf-viewer"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"
+        integrity="sha512-U5C477Z8VvmbYAoV4HDq17tf4wG6HXPC6/KM9+0/wEXQQ13gmKY2Zb0Z2vu0VNUWch4GlJ+Tl/dfoLOH4i2msw=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"
+        integrity="sha512-OBzVO4Vs08ySVicItHR9d1P27OEJDCmA2M1TB7a03j9o1tERYYw3hPIdPSAmVD+VvWyl7nRXz94UbGcKKQCrNA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
+        function getQueryParam(param) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(param);
+        }
+
+        const pdfUrl = getQueryParam('pdf');
+        let pdfDoc = null;
+        let currentScale = 0.4;
+        let currentRotation = 0;
+
+        pdfjsLib.getDocument(pdfUrl).promise.then(pdf => {
+            pdfDoc = pdf;
+            renderPages(1, 2); // Render first section by default
+        });
+
+        document.querySelectorAll('.sidebar h2').forEach(header => {
+            header.addEventListener('click', () => {
+                document.querySelectorAll('.sidebar h2').forEach(h => h.classList.remove('active'));
+                header.classList.add('active');
+                const pages = header.getAttribute('data-pages').split('-').map(Number);
+                renderPages(pages[0], pages[1]);
+            });
+        });
+
+        function renderPages(startPage, endPage) {
+            const pdfViewer = document.getElementById('pdf-viewer');
+            pdfViewer.innerHTML = ''; // Clear previous content
+
+            for (let pageNum = startPage; pageNum <= endPage; pageNum++) {
+                pdfDoc.getPage(pageNum).then(page => {
+                    const canvas = document.createElement('canvas');
+                    canvas.id = `pdf-canvas-${pageNum}`;
+                    pdfViewer.appendChild(canvas);
+
+                    const viewport = page.getViewport({ scale: currentScale, rotation: currentRotation });
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+
+                    const context = canvas.getContext('2d');
+                    const renderContext = {
+                        canvasContext: context,
+                        viewport: viewport
+                    };
+                    page.render(renderContext);
+                });
+            }
+        }
+
+        document.getElementById('zoom-in').addEventListener('click', () => {
+            currentScale += 0.1;
+            rerenderCurrentPage();
+        });
+
+        document.getElementById('zoom-out').addEventListener('click', () => {
+            currentScale = Math.max(0.1, currentScale - 0.1);
+            rerenderCurrentPage();
+        });
+
+        document.getElementById('rotate').addEventListener('click', () => {
+            currentRotation = (currentRotation + 90) % 360;
+            rerenderCurrentPage();
+        });
+
+        function rerenderCurrentPage() {
+            const canvas = document.querySelector('canvas');
+            if (canvas) {
+                const pageNum = parseInt(canvas.id.split('-')[2], 10);
+                renderPages(pageNum, pageNum);
+            }
+        }
+
+        document.getElementById('toggle-btn').addEventListener('click', () => {
+            const sidebar = document.getElementById('sidebar');
+            const content = document.getElementById('content');
+            if (sidebar.style.transform === 'translateX(-100%)') {
+                sidebar.style.transform = 'translateX(0)';
+                content.style.marginLeft = '30%';
+            } else {
+                sidebar.style.transform = 'translateX(-100%)';
+                content.style.marginLeft = '0';
+            }
+        });
+
+        window.addEventListener('resize', rerenderCurrentPage);
+
+        document.querySelectorAll('.download-icon').forEach(icon => {
+            icon.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const pages = e.target.getAttribute('data-pages').split('-').map(Number);
+                downloadSection(pages[0], pages[1]);
+            });
+        });
+
+        async function downloadSection(startPage, endPage) {
+            const pdfBytes = await fetch(pdfUrl).then(res => res.arrayBuffer());
+            const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
+            const pdfDocNew = await PDFLib.PDFDocument.create();
+            const pages = await pdfDoc.copyPages(pdfDoc, Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage - 1 + i));
+            pages.forEach(page => pdfDocNew.addPage(page));
+
+            const pdfBytesNew = await pdfDocNew.save();
+            const blob = new Blob([pdfBytesNew], { type: 'application/pdf' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `section-${startPage}-${endPage}.pdf`;
+            link.click();
+        }
+
+        document.getElementById('download-all').addEventListener('click', async () => {
+            const pdfBytes = await fetch(pdfUrl).then(res => res.arrayBuffer());
+            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'sample.pdf';
+            link.click();
+        });
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- Latest code -->
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Viewer</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        .sidebar {
+            width: 30%;
+            background-color: #343a40;
+            color: #fff;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            position: fixed;
+            top: 60px;
+            bottom: 0;
+            transition: transform 0.3s ease;
+        }
+        .sidebar h2 {
+            cursor: pointer;
+            padding: 10px;
+            border-bottom: 1px solid #495057;
+            margin: 10px 0;
+            transition: background-color 0.3s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sidebar h2:hover {
+            background-color: #0056b3;
+        }
+
+        .sidebar h2.active {
+            background-color: #495057;
+        }
+        .toggle-btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 10;
+            transition: transform 0.3s ease, background-color 0.3s;
+            border-radius: 5px;
+        }
+        .toggle-btn:hover {
+            background-color: #0056b3;
+        }
+        .content {
+            width: 70%;
+            margin-left: 30%;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            height: calc(100vh - 60px);
+            margin-top: 60px;
+            transition: margin-left 0.3s ease;
+        }
+        .pdf-viewer {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 10;
+        }
+        .controls button {
+            padding: 10px;
+            cursor: pointer;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            transition: background-color 0.3s, transform 0.3s;
+            border-radius: 5px;
+        }
+        .controls button:hover {
+            background-color: #0056b3;
+            transform: scale(1.05);
+        }
+        canvas {
+            border: 1px solid #ccc;
+            margin-bottom: 20px;
+            width: auto;
+        }
+        .profile-info {
+            display: flex;
+            align-items: center;
+            margin-top: 5px;
+        }
+        .profile-info img {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        .download-icon {
+            margin-left: auto;
+            cursor: pointer;
+            color: #fff;
+            padding: 2px 10px;
+            border-radius: 50%;
+            border: 2px solid white;
+            transition: all 0.5s;
+        }
+        .download-icon:hover {
+            background-color: blueviolet;
+        }
+    </style>
+</head>
+<body>
+    <button class="toggle-btn" id="toggle-btn">Toggle Sidebar</button>
+    <div class="sidebar" id="sidebar">
+        <h2 class="active section-tab" data-pages="1-2">
+            Section 1
+            <span class="download-icon" data-pages="1-2">⬇</span>
+        </h2>
+        <div class="profile-info">
+            <img src="../assets/img/testimonials/testimonials-3.jpg" alt="Profile Picture">
+            John Doe (2 pages)
+        </div>
+        <h2 class="section-tab" data-pages="3-5">
+            Section 2
+            <span class="download-icon" data-pages="3-5">⬇</span>
+        </h2>
+        <div class="profile-info">
+            <img src="../assets/img/testimonials/testimonials-3.jpg" alt="Profile Picture">
+            Jane Smith (3 pages)
+        </div>
+        <h2 class="section-tab" data-pages="6-6">
+            Section 3
+            <span class="download-icon" data-pages="6-6">⬇</span>
+        </h2>
+        <div class="profile-info">
+            <img src="../assets/img/testimonials/testimonials-3.jpg" alt="Profile Picture">
+            Michael Johnson (1 page)
+        </div>
+    </div>
+    <div class="content" id="content">
+        <div class="controls">
+            <button id="download-all">Download All</button>
+            <button id="zoom-in">Zoom In</button>
+            <button id="zoom-out">Zoom Out</button>
+            <button id="rotate">Rotate</button>
+        </div>
+        <div class="pdf-viewer" id="pdf-viewer"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"
+        integrity="sha512-U5C477Z8VvmbYAoV4HDq17tf4wG6HXPC6/KM9+0/wEXQQ13gmKY2Zb0Z2vu0VNUWch4GlJ+Tl/dfoLOH4i2msw=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"
+        integrity="sha512-OBzVO4Vs08ySVicItHR9d1P27OEJDCmA2M1TB7a03j9o1tERYYw3hPIdPSAmVD+VvWyl7nRXz94UbGcKKQCrNA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
+        function getQueryParam(param) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(param);
+        }
+
+        // My Experimentations
+
+        // Fetch volumes dynamically
+
+        fetch('fetch_volumes.php')
+            .then(response => response.json())
+            .then(volumes => {
+                console.log(`Here are the volumes:`, volumes);
+                volumes.forEach(volume => {
+                    const sectionTab = document.getElementsByClassName("section-tab");
+                    sectionTab.innerHTML = volume.journal_name;
+                    
+                });
+            })
+            .catch(error => console.error('Error fetching volumes:', error));
+
+
+
+
+
+
+
+        const pdfUrl = getQueryParam('pdf');
+        let pdfDoc = null;
+        let currentScale = 0.8;
+        let currentRotation = 0;
+
+        let sectionBegins=1;
+        let sectionEnds=2;
+        pdfjsLib.getDocument(pdfUrl).promise.then(pdf => {
+            pdfDoc = pdf;
+            renderPages(sectionBegins, sectionEnds); // Render first section by default
+        });
+
+        document.querySelectorAll('.sidebar h2').forEach(header => {
+            header.addEventListener('click', () => {
+                document.querySelectorAll('.sidebar h2').forEach(h => h.classList.remove('active'));
+                header.classList.add('active');
+                const pages = header.getAttribute('data-pages').split('-').map(Number);
+                renderPages(pages[0], pages[1]);
+            });
+        });
+
+        function renderPages(startPage, endPage) {
+            const pdfViewer = document.getElementById('pdf-viewer');
+            pdfViewer.innerHTML = ''; // Clear previous content
+
+            for (let pageNum = startPage; pageNum <= endPage; pageNum++) {
+                pdfDoc.getPage(pageNum).then(page => {
+                    const canvas = document.createElement('canvas');
+                    canvas.id = `pdf-canvas-${pageNum}`;
+                    pdfViewer.appendChild(canvas);
+
+                    const viewport = page.getViewport({ scale: currentScale, rotation: currentRotation });
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+
+                    const context = canvas.getContext('2d');
+                    const renderContext = {
+                        canvasContext: context,
+                        viewport: viewport
+                    };
+                    page.render(renderContext);
+                });
+            }
+        }
+
+        document.getElementById('zoom-in').addEventListener('click', () => {
+            currentScale += 0.1;
+            rerenderCurrentPage();
+        });
+
+        document.getElementById('zoom-out').addEventListener('click', () => {
+            currentScale = Math.max(0.1, currentScale - 0.1);
+            rerenderCurrentPage();
+        });
+
+        document.getElementById('rotate').addEventListener('click', () => {
+            currentRotation = (currentRotation + 90) % 360;
+            rerenderCurrentPage();
+        });
+
+        function rerenderCurrentPage() {
+            const canvas = document.querySelector('canvas');
+            if (canvas) {
+                const pageNum = parseInt(canvas.id.split('-')[2], 10);
+                renderPages(pageNum, pageNum);
+            }
+        }
+
+        document.getElementById('toggle-btn').addEventListener('click', () => {
+            const sidebar = document.getElementById('sidebar');
+            const content = document.getElementById('content');
+            if (sidebar.style.transform === 'translateX(-100%)') {
+                sidebar.style.transform = 'translateX(0)';
+                content.style.marginLeft = '30%';
+            } else {
+                sidebar.style.transform = 'translateX(-100%)';
+                content.style.marginLeft = '0';
+            }
+        });
+
+        window.addEventListener('resize', rerenderCurrentPage);
+
+        document.querySelectorAll('.download-icon').forEach(icon => {
+            icon.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const pages = e.target.getAttribute('data-pages').split('-').map(Number);
+                downloadSection(pages[0], pages[1]);
+            });
+        });
+
+        async function downloadSection(startPage, endPage) {
+            const pdfBytes = await fetch(pdfUrl).then(res => res.arrayBuffer());
+            const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
+            const pdfDocNew = await PDFLib.PDFDocument.create();
+            const pages = await pdfDoc.copyPages(pdfDoc, Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage - 1 + i));
+            pages.forEach(page => pdfDocNew.addPage(page));
+
+            const pdfBytesNew = await pdfDocNew.save();
+            const blob = new Blob([pdfBytesNew], { type: 'application/pdf' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `section-${startPage}-${endPage}.pdf`;
+            link.click();
+        }
+
+        document.getElementById('download-all').addEventListener('click', async () => {
+            const pdfBytes = await fetch(pdfUrl).then(res => res.arrayBuffer());
+            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'sample.pdf';
+            link.click();
+        });
+    </script>
+</body>
+</html>

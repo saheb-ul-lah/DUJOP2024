@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Archives - DUJOP</title>
+    <link href="assets/img/favicon.png" rel="icon">
+    <link href="assets/img/apple-touch-icon.png" rel="apple-touch-icon">
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700;800&family=Poppins:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+    <link href="assets/vendor/aos/aos.css" rel="stylesheet">
+    <link href="assets/vendor/glightbox/css/glightbox.min.css" rel="stylesheet">
+    <link href="assets/vendor/swiper/swiper-bundle.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="../assets/css/main.css">
+    <style>
+        @import url("https://pro.fontawesome.com/releases/v6.0.0-beta1/css/all.css");
+
+        button.neumorphic {
+            container-type: inline-size;
+            aspect-ratio: 1/1;
+            border: 0.5rem solid transparent;
+            border-radius: 1rem;
+            color: hsl(0 0% 10%);
+            background: none;
+            display: grid;
+            place-content: center;
+            gap: 1rem;
+            --shadow: -0.5rem -0.5rem 1rem hsl(0 0% 100% / 0.75), 0.5rem 0.5rem 1rem hsl(0 0% 50% / 0.5);
+            box-shadow: var(--shadow);
+            outline: none;
+            transition: all 0.1s;
+        }
+
+        button.neumorphic:hover,
+        button.neumorphic:focus-visible {
+            color: hsl(10 80% 50%);
+            scale: 1.1;
+        }
+
+        button.neumorphic:active,
+        button.neumorphic.active {
+            box-shadow: var(--shadow), inset 0.5rem 0.5rem 1rem hsl(0 0% 50% / 0.5), inset -0.5rem -0.5rem 1rem hsl(0 0% 100% / 0.75);
+            color: hsl(10 80% 50%);
+        }
+
+        button.neumorphic i {
+            font-size: 31cqi;
+        }
+
+        button.neumorphic span {
+            font-family: system-ui, sans-serif;
+            font-size: 16cqi;
+        }
+
+        .buttons {
+            margin: 150px 100px;
+            display: grid;
+            width: min(75rem, 100%);
+            margin-inline: auto;
+            grid-template-columns: repeat(auto-fit, minmax(min(8rem, 100%), 1fr));
+            gap: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <header id="header" class="header d-flex align-items-center fixed-top">
+        <div class="container-fluid container-xl position-relative d-flex align-items-center">
+            <a href="index.html" class="logo d-flex align-items-center me-auto">
+                <h1 class="sitename">DUJOP</h1>
+            </a>
+            <a class="btn-getstarted" href="../index.html">Home</a>
+        </div>
+    </header>
+    <div class="buttons" id="volume-buttons">
+        <!-- Volume buttons will be dynamically inserted here -->
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const volumeButtonsContainer = document.getElementById('volume-buttons');
+
+            // Fetch volumes dynamically
+            fetch('fetch_volumes.php')
+                .then(response => response.json())
+                .then(volumes => {
+                    console.log(`Here are the volumes: ${volumes}`);
+                    volumes.forEach(volume => {
+                        const button = document.createElement('button');
+                        button.classList.add('neumorphic', 'volume-button');
+                        button.innerHTML = `
+                            <i class="fa-solid fa-book"></i>
+                            <span>${volume}</span>
+                        `;
+                        button.addEventListener('click', () => {
+                            window.location.href = `pdfviewer.html?pdf=${encodeURIComponent(volume)}`;
+                        });
+                        volumeButtonsContainer.appendChild(button);
+                    });
+                })
+                .catch(error => console.error('Error fetching volumes:', error));
+        });
+    </script>
+</body>
+</html>
