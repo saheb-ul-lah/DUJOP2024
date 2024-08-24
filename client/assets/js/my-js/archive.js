@@ -7,16 +7,21 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(volumes => {
             console.log(`Here are the volumes:`, volumes);
             volumes.forEach(volume => {
-                if (volume.status==="active"){
-                    const button = document.createElement('button');
-                    button.classList.add('neumorphic', 'volume-button');
+                if (volume.status === "active") {
+                    const button = document.createElement('div');
+                    button.classList.add('image-wrapper');
+
+                    // Add the image
                     button.innerHTML = `
-                        <i class="fa-solid fa-book"></i>
-                        <span>${volume.journal_name}</span>
+                        <img src="https://dibru.ac.in/wp-content/uploads/2024/04/Cover-Page_CTPR_Dec-2023_page-0001-1063x1536.jpg" class="volume-image" alt="${volume.journal_name}">
+                        <div class="volume-name">${volume.journal_name}</div>
                     `;
+
+                    // Add click event
                     button.addEventListener('click', () => {
                         window.location.href = `pdfviewer.html?pdf=${encodeURIComponent(volume.pdf)}`;
                     });
+
                     volumeButtonsContainer.appendChild(button);
                 }
             });
